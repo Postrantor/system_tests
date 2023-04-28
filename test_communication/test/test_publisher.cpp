@@ -17,16 +17,13 @@
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
-
 #include "test_msgs/message_fixtures.hpp"
 
-template<typename T>
-void publish(
-  rclcpp::Node::SharedPtr node,
-  const std::string & message_type,
-  std::vector<typename T::SharedPtr> messages,
-  size_t number_of_cycles = 100)
-{
+template <typename T>
+void publish(rclcpp::Node::SharedPtr node,
+             const std::string& message_type,
+             std::vector<typename T::SharedPtr> messages,
+             size_t number_of_cycles = 100) {
   auto start = std::chrono::steady_clock::now();
 
   auto qos = rclcpp::QoS(rclcpp::KeepLast(messages.size()));
@@ -55,8 +52,7 @@ void publish(
   printf("published for %f seconds\n", diff.count());
 }
 
-int main(int argc, char ** argv)
-{
+int main(int argc, char** argv) {
   if (argc != 3) {
     fprintf(stderr, "Wrong number of arguments, pass one message type\n");
     return 1;
@@ -65,25 +61,20 @@ int main(int argc, char ** argv)
 
   std::string message = argv[1];
   std::string namespace_ = argv[2];
-  auto node = rclcpp::Node::make_shared(
-    std::string("test_publisher_") + message, namespace_);
+  auto node = rclcpp::Node::make_shared(std::string("test_publisher_") + message, namespace_);
 
   if (message == "Empty") {
     publish<test_msgs::msg::Empty>(node, message, get_messages_empty());
   } else if (message == "BasicTypes") {
     publish<test_msgs::msg::BasicTypes>(node, message, get_messages_basic_types());
   } else if (message == "Arrays") {
-    publish<test_msgs::msg::Arrays>(
-      node, message, get_messages_arrays());
+    publish<test_msgs::msg::Arrays>(node, message, get_messages_arrays());
   } else if (message == "UnboundedSequences") {
-    publish<test_msgs::msg::UnboundedSequences>(
-      node, message, get_messages_unbounded_sequences());
+    publish<test_msgs::msg::UnboundedSequences>(node, message, get_messages_unbounded_sequences());
   } else if (message == "BoundedPlainSequences") {
-    publish<test_msgs::msg::BoundedPlainSequences>(
-      node, message, get_messages_bounded_plain_sequences());
+    publish<test_msgs::msg::BoundedPlainSequences>(node, message, get_messages_bounded_plain_sequences());
   } else if (message == "BoundedSequences") {
-    publish<test_msgs::msg::BoundedSequences>(
-      node, message, get_messages_bounded_sequences());
+    publish<test_msgs::msg::BoundedSequences>(node, message, get_messages_bounded_sequences());
   } else if (message == "MultiNested") {
     publish<test_msgs::msg::MultiNested>(node, message, get_messages_multi_nested());
   } else if (message == "Nested") {

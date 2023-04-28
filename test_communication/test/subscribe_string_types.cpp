@@ -12,32 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "subscribe_string_types.hpp"
+
 #include <string>
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
+#include "subscribe_helper.hpp"
 #include "test_msgs/msg/strings.hpp"
 #include "test_msgs/msg/w_strings.hpp"
 
-#include "subscribe_helper.hpp"
-#include "subscribe_string_types.hpp"
-
 rclcpp::SubscriptionBase::SharedPtr subscribe_strings(
-  rclcpp::Node::SharedPtr node,
-  const std::string & message_type,
-  const std::vector<test_msgs::msg::Strings::SharedPtr> & expected_messages,
-  std::vector<bool> & received_messages)
-{
-  return subscribe<test_msgs::msg::Strings>(
-    node, message_type, expected_messages, received_messages);
+    rclcpp::Node::SharedPtr node,
+    const std::string& message_type,
+    const std::vector<test_msgs::msg::Strings::SharedPtr>& expected_messages,
+    std::vector<bool>& received_messages) {
+  return subscribe<test_msgs::msg::Strings>(node, message_type, expected_messages, received_messages);
 }
 
 rclcpp::SubscriptionBase::SharedPtr subscribe_wstrings(
-  rclcpp::Node::SharedPtr node,
-  const std::string & message_type,
-  const std::vector<test_msgs::msg::WStrings::SharedPtr> & expected_messages,
-  std::vector<bool> & received_messages)
-{
-  return subscribe<test_msgs::msg::WStrings>(
-    node, message_type, expected_messages, received_messages);
+    rclcpp::Node::SharedPtr node,
+    const std::string& message_type,
+    const std::vector<test_msgs::msg::WStrings::SharedPtr>& expected_messages,
+    std::vector<bool>& received_messages) {
+  return subscribe<test_msgs::msg::WStrings>(node, message_type, expected_messages, received_messages);
 }

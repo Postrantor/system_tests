@@ -13,38 +13,31 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include <string>
 
-#include "rmw/serialized_message.h"
+#include "rcutils/allocator.h"
 #include "rmw/rmw.h"
-
+#include "rmw/serialized_message.h"
+#include "rosidl_typesupport_cpp/message_type_support.hpp"
 #include "test_msgs/msg/basic_types.h"
 #include "test_msgs/msg/basic_types.hpp"
 #include "test_msgs/msg/bounded_sequences.h"
 #include "test_msgs/msg/bounded_sequences.hpp"
 
-#include "rcutils/allocator.h"
-
-#include "rosidl_typesupport_cpp/message_type_support.hpp"
-
 #ifdef RMW_IMPLEMENTATION
-# define CLASSNAME_(NAME, SUFFIX) NAME ## __ ## SUFFIX
-# define CLASSNAME(NAME, SUFFIX) CLASSNAME_(NAME, SUFFIX)
+#define CLASSNAME_(NAME, SUFFIX) NAME##__##SUFFIX
+#define CLASSNAME(NAME, SUFFIX) CLASSNAME_(NAME, SUFFIX)
 #else
-# define CLASSNAME(NAME, SUFFIX) NAME
+#define CLASSNAME(NAME, SUFFIX) NAME
 #endif
 
-class CLASSNAME (TestMessageSerialization, RMW_IMPLEMENTATION) : public ::testing::Test
-{
-public:
-  void SetUp()
-  {
-  }
+class CLASSNAME(TestMessageSerialization, RMW_IMPLEMENTATION) : public ::testing::Test {
+ public:
+  void SetUp() {}
 };
 
-void print_serialized_buffer(
-  const rmw_serialized_message_t & serialized_msg, std::string prefix = "")
-{
+void print_serialized_buffer(const rmw_serialized_message_t& serialized_msg, std::string prefix = "") {
   printf("%s\n", prefix.c_str());
   for (unsigned int i = 0; i < serialized_msg.buffer_length; ++i) {
     printf("%02x ", serialized_msg.buffer[i]);
@@ -52,8 +45,7 @@ void print_serialized_buffer(
   printf("\n");
 }
 
-void fill_c_message(test_msgs__msg__BasicTypes * basic_types_msg_c)
-{
+void fill_c_message(test_msgs__msg__BasicTypes* basic_types_msg_c) {
   test_msgs__msg__BasicTypes__init(basic_types_msg_c);
   basic_types_msg_c->bool_value = true;
   basic_types_msg_c->byte_value = 255;
@@ -70,15 +62,13 @@ void fill_c_message(test_msgs__msg__BasicTypes * basic_types_msg_c)
   basic_types_msg_c->uint64_value = 10;
 }
 
-void fill_c_message(test_msgs__msg__BoundedSequences * bounded_sequences_msg_c)
-{
+void fill_c_message(test_msgs__msg__BoundedSequences* bounded_sequences_msg_c) {
   test_msgs__msg__BoundedSequences__init(bounded_sequences_msg_c);
   test_msgs__msg__BasicTypes__Sequence__init(&bounded_sequences_msg_c->basic_types_values, 1);
   fill_c_message(&bounded_sequences_msg_c->basic_types_values.data[0]);
 }
 
-void fill_cpp_message(test_msgs::msg::BasicTypes * basic_types_msg_cpp)
-{
+void fill_cpp_message(test_msgs::msg::BasicTypes* basic_types_msg_cpp) {
   basic_types_msg_cpp->bool_value = true;
   basic_types_msg_cpp->byte_value = 255;
   basic_types_msg_cpp->char_value = 'k';
@@ -94,8 +84,7 @@ void fill_cpp_message(test_msgs::msg::BasicTypes * basic_types_msg_cpp)
   basic_types_msg_cpp->uint64_value = 10;
 }
 
-void fill_cpp_message(test_msgs::msg::BoundedSequences * bounded_sequences_msg_cpp)
-{
+void fill_cpp_message(test_msgs::msg::BoundedSequences* bounded_sequences_msg_cpp) {
   test_msgs::msg::BasicTypes basic_types;
   fill_cpp_message(&basic_types);
   bounded_sequences_msg_cpp->basic_types_values.push_back(basic_types);
@@ -121,8 +110,7 @@ TEST_F(CLASSNAME(TestMessageSerialization, RMW_IMPLEMENTATION), de_serialize_c) 
 
   test_msgs__msg__BasicTypes basic_types_c_reverse;
   test_msgs__msg__BasicTypes__init(&basic_types_c_reverse);
-  ret =
-    rmw_deserialize(&serialized_message_c, message_c_typesupport, &basic_types_c_reverse);
+  ret = rmw_deserialize(&serialized_message_c, message_c_typesupport, &basic_types_c_reverse);
   EXPECT_EQ(RMW_RET_OK, ret);
   EXPECT_EQ(true, basic_types_c_reverse.bool_value);
   EXPECT_EQ(255, basic_types_c_reverse.byte_value);
@@ -151,21 +139,18 @@ TEST_F(CLASSNAME(TestMessageSerialization, RMW_IMPLEMENTATION), de_serialize_cpp
   auto ret = rmw_serialized_message_init(&serialized_message_cpp, 0, &allocator);
   ASSERT_EQ(RMW_RET_OK, ret);
 
-  auto message_cpp_typesupport =
-    rosidl_typesupport_cpp::get_message_type_support_handle<test_msgs::msg::BasicTypes>();
+  auto message_cpp_typesupport = rosidl_typesupport_cpp::get_message_type_support_handle<test_msgs::msg::BasicTypes>();
 
   test_msgs::msg::BasicTypes basic_types_msg_cpp;
   fill_cpp_message(&basic_types_msg_cpp);
 
-  ret =
-    rmw_serialize(&basic_types_msg_cpp, message_cpp_typesupport, &serialized_message_cpp);
+  ret = rmw_serialize(&basic_types_msg_cpp, message_cpp_typesupport, &serialized_message_cpp);
   EXPECT_EQ(RMW_RET_OK, ret);
   EXPECT_EQ(52u, serialized_message_cpp.buffer_length);
   print_serialized_buffer(serialized_message_cpp, "serialized message cpp");
 
   test_msgs::msg::BasicTypes basic_types_cpp_reverse;
-  ret = rmw_deserialize(
-    &serialized_message_cpp, message_cpp_typesupport, &basic_types_cpp_reverse);
+  ret = rmw_deserialize(&serialized_message_cpp, message_cpp_typesupport, &basic_types_cpp_reverse);
   EXPECT_EQ(RMW_RET_OK, ret);
   EXPECT_EQ(true, basic_types_cpp_reverse.bool_value);
   EXPECT_EQ(255, basic_types_cpp_reverse.byte_value);
@@ -198,7 +183,7 @@ TEST_F(CLASSNAME(TestMessageSerialization, RMW_IMPLEMENTATION), cdr_integrity) {
 
   auto message_c_typesupport = ROSIDL_GET_MSG_TYPE_SUPPORT(test_msgs, msg, BoundedSequences);
   auto message_cpp_typesupport =
-    rosidl_typesupport_cpp::get_message_type_support_handle<test_msgs::msg::BoundedSequences>();
+      rosidl_typesupport_cpp::get_message_type_support_handle<test_msgs::msg::BoundedSequences>();
 
   test_msgs__msg__BoundedSequences msg_c;
   fill_c_message(&msg_c);

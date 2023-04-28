@@ -18,15 +18,12 @@
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
-
-#include "test_msgs/message_fixtures.hpp"
-
 #include "subscribe_array_types.hpp"
 #include "subscribe_basic_types.hpp"
 #include "subscribe_string_types.hpp"
+#include "test_msgs/message_fixtures.hpp"
 
-int main(int argc, char ** argv)
-{
+int main(int argc, char** argv) {
   if (argc != 3) {
     fprintf(stderr, "Usage: %s <message_type> <namespace>\n", argv[0]);
     return 1;
@@ -37,8 +34,7 @@ int main(int argc, char ** argv)
 
   std::string message = argv[1];
   std::string namespace_ = argv[2];
-  auto node = rclcpp::Node::make_shared(
-    std::string("test_subscriber_") + message, namespace_);
+  auto node = rclcpp::Node::make_shared(std::string("test_subscriber_") + message, namespace_);
 
   auto messages_empty = get_messages_empty();
   auto messages_basic_types = get_messages_basic_types();
@@ -63,14 +59,11 @@ int main(int argc, char ** argv)
   } else if (message == "Arrays") {
     subscriber = subscribe_arrays(node, message, messages_arrays, received_messages);
   } else if (message == "UnboundedSequences") {
-    subscriber = subscribe_unbounded_sequences(
-      node, message, messages_unbounded_sequences, received_messages);
+    subscriber = subscribe_unbounded_sequences(node, message, messages_unbounded_sequences, received_messages);
   } else if (message == "BoundedPlainSequences") {
-    subscriber = subscribe_bounded_plain_sequences(
-      node, message, messages_bounded_plain_sequences, received_messages);
+    subscriber = subscribe_bounded_plain_sequences(node, message, messages_bounded_plain_sequences, received_messages);
   } else if (message == "BoundedSequences") {
-    subscriber = subscribe_bounded_sequences(
-      node, message, messages_bounded_sequences, received_messages);
+    subscriber = subscribe_bounded_sequences(node, message, messages_bounded_sequences, received_messages);
   } else if (message == "MultiNested") {
     subscriber = subscribe_multi_nested(node, message, messages_multi_nested, received_messages);
   } else if (message == "Nested") {
@@ -93,7 +86,7 @@ int main(int argc, char ** argv)
 
   try {
     rclcpp::spin(node);
-  } catch (const std::exception & e) {
+  } catch (const std::exception& e) {
     fprintf(stderr, "%s\n", e.what());
     rclcpp::shutdown();
     return 1;

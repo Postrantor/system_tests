@@ -23,15 +23,15 @@
 #include "test_msgs/msg/w_strings.hpp"
 
 rclcpp::SubscriptionBase::SharedPtr subscribe_strings(
-  rclcpp::Node::SharedPtr node,
-  const std::string & message_type,
-  const std::vector<test_msgs::msg::Strings::SharedPtr> & expected_messages,
-  std::vector<bool> & received_messages);
+    rclcpp::Node::SharedPtr node,
+    const std::string& message_type,
+    const std::vector<test_msgs::msg::Strings::SharedPtr>& expected_messages,
+    std::vector<bool>& received_messages);
 
 rclcpp::SubscriptionBase::SharedPtr subscribe_wstrings(
-  rclcpp::Node::SharedPtr node,
-  const std::string & message_type,
-  const std::vector<test_msgs::msg::WStrings::SharedPtr> & expected_messages,
-  std::vector<bool> & received_messages);
+    rclcpp::Node::SharedPtr node,
+    const std::string& message_type,
+    const std::vector<test_msgs::msg::WStrings::SharedPtr>& expected_messages,
+    std::vector<bool>& received_messages);
 
 #endif  // SUBSCRIBE_STRING_TYPES_HPP_

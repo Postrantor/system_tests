@@ -18,22 +18,17 @@
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
-
 #include "rcpputils/scope_exit.hpp"
-
-#include "test_msgs/message_fixtures.hpp"
-
 #include "subscribe_array_types.hpp"
 #include "subscribe_basic_types.hpp"
 #include "subscribe_string_types.hpp"
+#include "test_msgs/message_fixtures.hpp"
 
-template<typename T>
-void publish(
-  rclcpp::Node::SharedPtr node,
-  const std::string & message_type,
-  std::vector<typename T::SharedPtr> messages,
-  size_t number_of_cycles = 100)
-{
+template <typename T>
+void publish(rclcpp::Node::SharedPtr node,
+             const std::string& message_type,
+             std::vector<typename T::SharedPtr> messages,
+             size_t number_of_cycles = 100) {
   auto qos = rclcpp::QoS(rclcpp::KeepLast(messages.size()));
 
   auto publisher = node->create_publisher<T>(std::string("test/message/") + message_type, qos);
@@ -56,13 +51,9 @@ void publish(
   }
 }
 
-int main(int argc, char ** argv)
-{
+int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
-  RCPPUTILS_SCOPE_EXIT(
-  {
-    rclcpp::shutdown();
-  });
+  RCPPUTILS_SCOPE_EXIT({ rclcpp::shutdown(); });
   if (argc != 2) {
     fprintf(stderr, "Wrong number of arguments, pass one message type\n");
     return 1;
@@ -90,9 +81,7 @@ int main(int argc, char ** argv)
   auto messages_strings = get_messages_strings();
   auto messages_wstrings = get_messages_wstrings();
 
-  std::thread spin_thread([node]() {
-      rclcpp::spin(node);
-    });
+  std::thread spin_thread([node]() { rclcpp::spin(node); });
 
   if (message == "Empty") {
     subscriber = subscribe_empty(node, message, messages_empty, received_messages);
@@ -104,20 +93,14 @@ int main(int argc, char ** argv)
     subscriber = subscribe_arrays(node, message, messages_arrays, received_messages);
     publish<test_msgs::msg::Arrays>(node, message, messages_arrays);
   } else if (message == "UnboundedSequences") {
-    subscriber = subscribe_unbounded_sequences(
-      node, message, messages_unbounded_sequences, received_messages);
-    publish<test_msgs::msg::UnboundedSequences>(
-      node, message, messages_unbounded_sequences);
+    subscriber = subscribe_unbounded_sequences(node, message, messages_unbounded_sequences, received_messages);
+    publish<test_msgs::msg::UnboundedSequences>(node, message, messages_unbounded_sequences);
   } else if (message == "BoundedPlainSequences") {
-    subscriber = subscribe_bounded_plain_sequences(
-      node, message, messages_bounded_plain_sequences, received_messages);
-    publish<test_msgs::msg::BoundedPlainSequences>(
-      node, message, messages_bounded_plain_sequences);
+    subscriber = subscribe_bounded_plain_sequences(node, message, messages_bounded_plain_sequences, received_messages);
+    publish<test_msgs::msg::BoundedPlainSequences>(node, message, messages_bounded_plain_sequences);
   } else if (message == "BoundedSequences") {
-    subscriber = subscribe_bounded_sequences(
-      node, message, messages_bounded_sequences, received_messages);
-    publish<test_msgs::msg::BoundedSequences>(
-      node, message, messages_bounded_sequences);
+    subscriber = subscribe_bounded_sequences(node, message, messages_bounded_sequences, received_messages);
+    publish<test_msgs::msg::BoundedSequences>(node, message, messages_bounded_sequences);
   } else if (message == "MultiNested") {
     subscriber = subscribe_multi_nested(node, message, messages_multi_nested, received_messages);
     publish<test_msgs::msg::MultiNested>(node, message, messages_multi_nested);

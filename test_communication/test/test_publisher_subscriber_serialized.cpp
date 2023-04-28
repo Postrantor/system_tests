@@ -13,68 +13,59 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+
 #include <memory>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/serialization.hpp"
-
 #include "rmw/types.h"
-
 #include "test_msgs/message_fixtures.hpp"
 
 #ifdef RMW_IMPLEMENTATION
-# define CLASSNAME_(NAME, SUFFIX) NAME ## __ ## SUFFIX
-# define CLASSNAME(NAME, SUFFIX) CLASSNAME_(NAME, SUFFIX)
+#define CLASSNAME_(NAME, SUFFIX) NAME##__##SUFFIX
+#define CLASSNAME(NAME, SUFFIX) CLASSNAME_(NAME, SUFFIX)
 #else
-# define CLASSNAME(NAME, SUFFIX) NAME
+#define CLASSNAME(NAME, SUFFIX) NAME
 #endif
 
-class CLASSNAME (TestMessageSerialization, RMW_IMPLEMENTATION) : public ::testing::Test
-{
-public:
-  void SetUp()
-  {
-    rclcpp::init(0, NULL);
-  }
+class CLASSNAME(TestMessageSerialization, RMW_IMPLEMENTATION) : public ::testing::Test {
+ public:
+  void SetUp() { rclcpp::init(0, NULL); }
 
-  void TearDown()
-  {
-    rclcpp::shutdown();
-  }
+  void TearDown() { rclcpp::shutdown(); }
 };
 
 TEST_F(CLASSNAME(TestMessageSerialization, RMW_IMPLEMENTATION), serialized_callback) {
   bool got_first_msg = false;
   size_t counter = 0;
 
-  auto serialized_callback =
-    [&got_first_msg, &counter](const std::shared_ptr<rclcpp::SerializedMessage> serialized_msg) {
-      using MessageT = test_msgs::msg::BasicTypes;
-      rclcpp::Serialization<MessageT> serializer;
-      MessageT basic_types_msg;
-      EXPECT_NO_THROW(serializer.deserialize_message(serialized_msg.get(), &basic_types_msg));
+  auto serialized_callback = [&got_first_msg,
+                              &counter](const std::shared_ptr<rclcpp::SerializedMessage> serialized_msg) {
+    using MessageT = test_msgs::msg::BasicTypes;
+    rclcpp::Serialization<MessageT> serializer;
+    MessageT basic_types_msg;
+    EXPECT_NO_THROW(serializer.deserialize_message(serialized_msg.get(), &basic_types_msg));
 
-      if (!got_first_msg) {
-        // start counting from first message received, in case we miss the first couple messages
-        counter = basic_types_msg.uint8_value;
-        got_first_msg = true;
-      }
+    if (!got_first_msg) {
+      // start counting from first message received, in case we miss the first couple messages
+      counter = basic_types_msg.uint8_value;
+      got_first_msg = true;
+    }
 
-      printf("received message %zu\n", counter);
-      for (auto i = 0u; i < serialized_msg->size(); ++i) {
-        printf("%02x ", serialized_msg->get_rcl_serialized_message().buffer[i]);
-      }
-      printf("\n");
+    printf("received message %zu\n", counter);
+    for (auto i = 0u; i < serialized_msg->size(); ++i) {
+      printf("%02x ", serialized_msg->get_rcl_serialized_message().buffer[i]);
+    }
+    printf("\n");
 
-      EXPECT_EQ(counter, basic_types_msg.uint8_value);
-      counter++;
-    };
+    EXPECT_EQ(counter, basic_types_msg.uint8_value);
+    counter++;
+  };
 
   auto node = rclcpp::Node::make_shared("test_publisher_subscriber_serialized");
-  auto subscriber = node->create_subscription<test_msgs::msg::BasicTypes>(
-    "test_publisher_subscriber_serialized_topic", 10, serialized_callback);
-  auto publisher = node->create_publisher<test_msgs::msg::BasicTypes>(
-    "test_publisher_subscriber_serialized_topic", 10);
+  auto subscriber = node->create_subscription<test_msgs::msg::BasicTypes>("test_publisher_subscriber_serialized_topic",
+                                                                          10, serialized_callback);
+  auto publisher = node->create_publisher<test_msgs::msg::BasicTypes>("test_publisher_subscriber_serialized_topic", 10);
 
   test_msgs::msg::BasicTypes msg;
 

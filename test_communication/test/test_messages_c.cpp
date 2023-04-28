@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gtest/gtest.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include <gtest/gtest.h>
 
 #include <chrono>
 #include <string>
 #include <thread>
 
 #include "osrf_testing_tools_cpp/scope_exit.hpp"
-
-#include "rcl/subscription.h"
+#include "rcl/error_handling.h"
 #include "rcl/publisher.h"
-
 #include "rcl/rcl.h"
-
+#include "rcl/subscription.h"
+#include "rosidl_runtime_c/message_type_support_struct.h"
+#include "rosidl_runtime_c/primitives_sequence_functions.h"
+#include "rosidl_runtime_c/string_functions.h"
 #include "test_msgs/msg/arrays.h"
 #include "test_msgs/msg/basic_types.h"
 #include "test_msgs/msg/bounded_sequences.h"
@@ -40,11 +40,6 @@
 #include "test_msgs/msg/strings.h"
 #include "test_msgs/msg/unbounded_sequences.h"
 
-#include "rosidl_runtime_c/string_functions.h"
-#include "rosidl_runtime_c/primitives_sequence_functions.h"
-#include "rosidl_runtime_c/message_type_support_struct.h"
-#include "rcl/error_handling.h"
-
 #ifndef SCOPE_EXIT_HPP_
 #define SCOPE_EXIT_HPP_
 
@@ -53,52 +48,43 @@
 #include <limits>
 #include <memory>
 
-template<typename Callable>
-struct ScopeExit
-{
-  explicit ScopeExit(Callable callable)
-  : callable_(callable) {}
-  ~ScopeExit() {callable_();}
+template <typename Callable>
+struct ScopeExit {
+  explicit ScopeExit(Callable callable) : callable_(callable) {}
+  ~ScopeExit() { callable_(); }
 
-private:
+ private:
   Callable callable_;
 };
 
-template<typename Callable>
-ScopeExit<Callable>
-make_scope_exit(Callable callable)
-{
+template <typename Callable>
+ScopeExit<Callable> make_scope_exit(Callable callable) {
   return ScopeExit<Callable>(callable);
 }
 
-#define SCOPE_EXIT(code) make_scope_exit([&]() {code;})
+#define SCOPE_EXIT(code) make_scope_exit([&]() { code; })
 
 #endif  // SCOPE_EXIT_HPP_
 
-
 #ifdef RMW_IMPLEMENTATION
-# define CLASSNAME_(NAME, SUFFIX) NAME ## __ ## SUFFIX
-# define CLASSNAME(NAME, SUFFIX) CLASSNAME_(NAME, SUFFIX)
+#define CLASSNAME_(NAME, SUFFIX) NAME##__##SUFFIX
+#define CLASSNAME(NAME, SUFFIX) CLASSNAME_(NAME, SUFFIX)
 #else
-# define CLASSNAME(NAME, SUFFIX) NAME
+#define CLASSNAME(NAME, SUFFIX) NAME
 #endif
 
-class CLASSNAME (TestMessagesFixture, RMW_IMPLEMENTATION) : public ::testing::Test
-{
-public:
-  rcl_context_t * context_ptr;
-  rcl_node_t * node_ptr;
-  void SetUp()
-  {
+class CLASSNAME(TestMessagesFixture, RMW_IMPLEMENTATION) : public ::testing::Test {
+ public:
+  rcl_context_t* context_ptr;
+  rcl_node_t* node_ptr;
+  void SetUp() {
     rcl_ret_t ret;
     {
       rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
       ret = rcl_init_options_init(&init_options, rcl_get_default_allocator());
       ASSERT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
       OSRF_TESTING_TOOLS_CPP_SCOPE_EXIT(
-      {
-        EXPECT_EQ(RCL_RET_OK, rcl_init_options_fini(&init_options)) << rcl_get_error_string().str;
-      });
+          { EXPECT_EQ(RCL_RET_OK, rcl_init_options_fini(&init_options)) << rcl_get_error_string().str; });
       this->context_ptr = new rcl_context_t;
       *this->context_ptr = rcl_get_zero_initialized_context();
       ret = rcl_init(0, nullptr, &init_options, this->context_ptr);
@@ -106,14 +92,13 @@ public:
     }
     this->node_ptr = new rcl_node_t;
     *this->node_ptr = rcl_get_zero_initialized_node();
-    const char * name = "test_message_fixture_node";
+    const char* name = "test_message_fixture_node";
     rcl_node_options_t node_options = rcl_node_get_default_options();
     ret = rcl_node_init(this->node_ptr, name, "", this->context_ptr, &node_options);
     ASSERT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
   }
 
-  void TearDown()
-  {
+  void TearDown() {
     rcl_ret_t ret = rcl_node_fini(this->node_ptr);
     delete this->node_ptr;
     EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
@@ -124,56 +109,44 @@ public:
     EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
   }
 
-  template<typename MessageT>
-  void
-  test_message_type(
-    const char * topic_name,
-    const rosidl_message_type_support_t * ts,
-    rcl_context_t * context)
-  {
+  template <typename MessageT>
+  void test_message_type(const char* topic_name, const rosidl_message_type_support_t* ts, rcl_context_t* context) {
     rcl_ret_t ret;
     rcl_publisher_t publisher = rcl_get_zero_initialized_publisher();
 
     rcl_publisher_options_t publisher_options = rcl_publisher_get_default_options();
     ret = rcl_publisher_init(&publisher, this->node_ptr, ts, topic_name, &publisher_options);
     ASSERT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
-    auto publisher_exit = make_scope_exit(
-      [&publisher, this]() {
-        rcl_ret_t ret = rcl_publisher_fini(&publisher, this->node_ptr);
-        EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
-      });
+    auto publisher_exit = make_scope_exit([&publisher, this]() {
+      rcl_ret_t ret = rcl_publisher_fini(&publisher, this->node_ptr);
+      EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
+    });
     rcl_subscription_t subscription = rcl_get_zero_initialized_subscription();
     rcl_subscription_options_t subscription_options = rcl_subscription_get_default_options();
-    ret = rcl_subscription_init(
-      &subscription, this->node_ptr, ts, topic_name, &subscription_options);
+    ret = rcl_subscription_init(&subscription, this->node_ptr, ts, topic_name, &subscription_options);
     ASSERT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
-    auto subscription_exit = make_scope_exit(
-      [&subscription, this]() {
-        rcl_ret_t ret = rcl_subscription_fini(&subscription, this->node_ptr);
-        EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
-      });
+    auto subscription_exit = make_scope_exit([&subscription, this]() {
+      rcl_ret_t ret = rcl_subscription_fini(&subscription, this->node_ptr);
+      EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
+    });
     EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
 
     {
       rcl_wait_set_t wait_set = rcl_get_zero_initialized_wait_set();
       EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
-      ret = rcl_wait_set_init(
-        &wait_set,
-        0,  // number_of_subscriptions
-        1,  // number_of_guard_conditions
-        0,  // number_of_timers
-        0,  // number_of_clients
-        0,  // number_of_services
-        0,  // number_of_events
-        context,
-        rcl_get_default_allocator());
+      ret = rcl_wait_set_init(&wait_set,
+                              0,  // number_of_subscriptions
+                              1,  // number_of_guard_conditions
+                              0,  // number_of_timers
+                              0,  // number_of_clients
+                              0,  // number_of_services
+                              0,  // number_of_events
+                              context, rcl_get_default_allocator());
       EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
       ret = rcl_wait_set_clear(&wait_set);
       EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
-      const rcl_guard_condition_t * graph_guard_condition =
-        rcl_node_get_graph_guard_condition(this->node_ptr);
-      ret = rcl_wait_set_add_guard_condition(
-        &wait_set, graph_guard_condition, NULL);
+      const rcl_guard_condition_t* graph_guard_condition = rcl_node_get_graph_guard_condition(this->node_ptr);
+      ret = rcl_wait_set_add_guard_condition(&wait_set, graph_guard_condition, NULL);
       EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
       ret = rcl_wait(&wait_set, -1);
       ASSERT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
@@ -187,10 +160,7 @@ public:
       size_t nb_msgs = get_message_num(&message);
       for (size_t msg_cnt = 0; msg_cnt < nb_msgs; msg_cnt++) {
         get_message(&message, msg_cnt);
-        auto msg_exit = make_scope_exit(
-          [&message]() {
-            fini_message(&message);
-          });
+        auto msg_exit = make_scope_exit([&message]() { fini_message(&message); });
         ret = rcl_publish(&publisher, &message, nullptr);
         ASSERT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
       }
@@ -202,23 +172,18 @@ public:
       size_t nb_msgs = get_message_num(&message);
       for (size_t msg_cnt = 0; msg_cnt < nb_msgs; msg_cnt++) {
         init_message(&message);
-        auto msg_exit = make_scope_exit(
-          [&message]() {
-            fini_message(&message);
-          });
+        auto msg_exit = make_scope_exit([&message]() { fini_message(&message); });
 
         rcl_wait_set_t wait_set = rcl_get_zero_initialized_wait_set();
         EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
-        ret = rcl_wait_set_init(
-          &wait_set,
-          1,  // number_of_subscriptions
-          0,  // number_of_guard_conditions
-          0,  // number_of_timers
-          0,  // number_of_clients
-          0,  // number_of_services
-          0,  // number_of_events
-          context,
-          rcl_get_default_allocator());
+        ret = rcl_wait_set_init(&wait_set,
+                                1,  // number_of_subscriptions
+                                0,  // number_of_guard_conditions
+                                0,  // number_of_timers
+                                0,  // number_of_clients
+                                0,  // number_of_services
+                                0,  // number_of_events
+                                context, rcl_get_default_allocator());
         EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
         ret = rcl_wait_set_clear(&wait_set);
         EXPECT_EQ(RCL_RET_OK, ret) << rcl_get_error_string().str;
@@ -236,48 +201,44 @@ public:
   }
 };
 
-
 // Utilities for test fixtures
-template<typename MessageT>
-size_t get_message_num(MessageT * msg);
+template <typename MessageT>
+size_t get_message_num(MessageT* msg);
 
-template<typename MessageT>
-void init_message(MessageT * msg);
+template <typename MessageT>
+void init_message(MessageT* msg);
 
-template<typename MessageT>
-void get_message(MessageT * msg, size_t msg_num);
+template <typename MessageT>
+void get_message(MessageT* msg, size_t msg_num);
 
-template<typename MessageT>
-void verify_message(MessageT & msg, size_t msg_num);
+template <typename MessageT>
+void verify_message(MessageT& msg, size_t msg_num);
 
-template<typename MessageT>
-void fini_message(MessageT * msg);
+template <typename MessageT>
+void fini_message(MessageT* msg);
 
 #define DEFINE_FINI_MESSAGE(TYPE) \
-  template<> \
-  void fini_message(TYPE * msg) { \
-    TYPE ## __fini(msg); \
+  template <>                     \
+  void fini_message(TYPE* msg) {  \
+    TYPE##__fini(msg);            \
   }
 
 // Test publish/subscribe with a variety of messages
 
 // Define functions and test cases for each message type
-template<>
-size_t get_message_num(test_msgs__msg__BasicTypes * msg)
-{
+template <>
+size_t get_message_num(test_msgs__msg__BasicTypes* msg) {
   (void)msg;
   return 4;
 }
 
-template<>
-void init_message(test_msgs__msg__BasicTypes * msg)
-{
+template <>
+void init_message(test_msgs__msg__BasicTypes* msg) {
   test_msgs__msg__BasicTypes__init(msg);
 }
 
-template<>
-void get_message(test_msgs__msg__BasicTypes * msg, size_t msg_num)
-{
+template <>
+void get_message(test_msgs__msg__BasicTypes* msg, size_t msg_num) {
   test_msgs__msg__BasicTypes__init(msg);
   switch (msg_num) {
     case 0:
@@ -343,9 +304,8 @@ void get_message(test_msgs__msg__BasicTypes * msg, size_t msg_num)
   }
 }
 
-template<>
-void verify_message(test_msgs__msg__BasicTypes & message, size_t msg_num)
-{
+template <>
+void verify_message(test_msgs__msg__BasicTypes& message, size_t msg_num) {
   test_msgs__msg__BasicTypes expected_msg;
   get_message(&expected_msg, msg_num);
   EXPECT_EQ(expected_msg.bool_value, message.bool_value);
@@ -365,34 +325,29 @@ void verify_message(test_msgs__msg__BasicTypes & message, size_t msg_num)
 
 DEFINE_FINI_MESSAGE(test_msgs__msg__BasicTypes)
 TEST_F(CLASSNAME(TestMessagesFixture, RMW_IMPLEMENTATION), test_basic_types) {
-  const rosidl_message_type_support_t * ts = ROSIDL_GET_MSG_TYPE_SUPPORT(
-    test_msgs, msg, BasicTypes);
+  const rosidl_message_type_support_t* ts = ROSIDL_GET_MSG_TYPE_SUPPORT(test_msgs, msg, BasicTypes);
   test_message_type<test_msgs__msg__BasicTypes>("test_basic_types", ts, this->context_ptr);
 }
 
-template<>
-size_t get_message_num(test_msgs__msg__Constants * msg)
-{
+template <>
+size_t get_message_num(test_msgs__msg__Constants* msg) {
   (void)msg;
   return 1;
 }
 
-template<>
-void init_message(test_msgs__msg__Constants * msg)
-{
+template <>
+void init_message(test_msgs__msg__Constants* msg) {
   test_msgs__msg__Constants__init(msg);
 }
 
-template<>
-void get_message(test_msgs__msg__Constants * msg, size_t msg_num)
-{
+template <>
+void get_message(test_msgs__msg__Constants* msg, size_t msg_num) {
   test_msgs__msg__Constants__init(msg);
   (void)msg_num;
 }
 
-template<>
-void verify_message(test_msgs__msg__Constants & message, size_t msg_num)
-{
+template <>
+void verify_message(test_msgs__msg__Constants& message, size_t msg_num) {
   (void)message;
   (void)msg_num;
   EXPECT_EQ(test_msgs__msg__Constants__BOOL_CONST, true);
@@ -412,34 +367,29 @@ void verify_message(test_msgs__msg__Constants & message, size_t msg_num)
 
 DEFINE_FINI_MESSAGE(test_msgs__msg__Constants)
 TEST_F(CLASSNAME(TestMessagesFixture, RMW_IMPLEMENTATION), test_constants) {
-  const rosidl_message_type_support_t * ts = ROSIDL_GET_MSG_TYPE_SUPPORT(
-    test_msgs, msg, Constants);
+  const rosidl_message_type_support_t* ts = ROSIDL_GET_MSG_TYPE_SUPPORT(test_msgs, msg, Constants);
   test_message_type<test_msgs__msg__Constants>("test_constants", ts, this->context_ptr);
 }
 
-template<>
-size_t get_message_num(test_msgs__msg__Defaults * msg)
-{
+template <>
+size_t get_message_num(test_msgs__msg__Defaults* msg) {
   (void)msg;
   return 1;
 }
 
-template<>
-void init_message(test_msgs__msg__Defaults * msg)
-{
+template <>
+void init_message(test_msgs__msg__Defaults* msg) {
   test_msgs__msg__Defaults__init(msg);
 }
 
-template<>
-void get_message(test_msgs__msg__Defaults * msg, size_t msg_num)
-{
+template <>
+void get_message(test_msgs__msg__Defaults* msg, size_t msg_num) {
   test_msgs__msg__Defaults__init(msg);
   (void)msg_num;
 }
 
-template<>
-void verify_message(test_msgs__msg__Defaults & message, size_t msg_num)
-{
+template <>
+void verify_message(test_msgs__msg__Defaults& message, size_t msg_num) {
   (void)message;
   test_msgs__msg__Defaults expected_msg;
   get_message(&expected_msg, msg_num);
@@ -460,61 +410,52 @@ void verify_message(test_msgs__msg__Defaults & message, size_t msg_num)
 
 DEFINE_FINI_MESSAGE(test_msgs__msg__Defaults)
 TEST_F(CLASSNAME(TestMessagesFixture, RMW_IMPLEMENTATION), test_defaults) {
-  const rosidl_message_type_support_t * ts = ROSIDL_GET_MSG_TYPE_SUPPORT(
-    test_msgs, msg, Defaults);
+  const rosidl_message_type_support_t* ts = ROSIDL_GET_MSG_TYPE_SUPPORT(test_msgs, msg, Defaults);
   test_message_type<test_msgs__msg__Defaults>("test_defaults", ts, this->context_ptr);
 }
 
-template<>
-size_t get_message_num(test_msgs__msg__Empty * msg)
-{
+template <>
+size_t get_message_num(test_msgs__msg__Empty* msg) {
   (void)msg;
   return 1;
 }
 
-template<>
-void init_message(test_msgs__msg__Empty * msg)
-{
+template <>
+void init_message(test_msgs__msg__Empty* msg) {
   test_msgs__msg__Empty__init(msg);
 }
 
-template<>
-void get_message(test_msgs__msg__Empty * msg, size_t msg_num)
-{
+template <>
+void get_message(test_msgs__msg__Empty* msg, size_t msg_num) {
   test_msgs__msg__Empty__init(msg);
   (void)msg_num;
 }
 
-template<>
-void verify_message(test_msgs__msg__Empty & message, size_t msg_num)
-{
+template <>
+void verify_message(test_msgs__msg__Empty& message, size_t msg_num) {
   (void)message;
   (void)msg_num;
 }
 
 DEFINE_FINI_MESSAGE(test_msgs__msg__Empty)
 TEST_F(CLASSNAME(TestMessagesFixture, RMW_IMPLEMENTATION), test_empty) {
-  const rosidl_message_type_support_t * ts = ROSIDL_GET_MSG_TYPE_SUPPORT(
-    test_msgs, msg, Empty);
+  const rosidl_message_type_support_t* ts = ROSIDL_GET_MSG_TYPE_SUPPORT(test_msgs, msg, Empty);
   test_message_type<test_msgs__msg__Empty>("test_empty", ts, this->context_ptr);
 }
 
-template<>
-size_t get_message_num(test_msgs__msg__Strings * msg)
-{
+template <>
+size_t get_message_num(test_msgs__msg__Strings* msg) {
   (void)msg;
   return 3;
 }
 
-template<>
-void init_message(test_msgs__msg__Strings * msg)
-{
+template <>
+void init_message(test_msgs__msg__Strings* msg) {
   test_msgs__msg__Strings__init(msg);
 }
 
-template<>
-void get_message(test_msgs__msg__Strings * msg, size_t msg_num)
-{
+template <>
+void get_message(test_msgs__msg__Strings* msg, size_t msg_num) {
   test_msgs__msg__Strings__init(msg);
   switch (msg_num) {
     case 0:
@@ -535,83 +476,68 @@ void get_message(test_msgs__msg__Strings * msg, size_t msg_num)
         bounded_string_value[i] = '0' + (i % 10);
       }
       rosidl_runtime_c__String__assignn(&msg->string_value, string_value, sizeof(string_value));
-      rosidl_runtime_c__String__assignn(
-        &msg->bounded_string_value, bounded_string_value, sizeof(bounded_string_value));
+      rosidl_runtime_c__String__assignn(&msg->bounded_string_value, bounded_string_value, sizeof(bounded_string_value));
       break;
   }
 }
 
 DEFINE_FINI_MESSAGE(test_msgs__msg__Strings)
-template<>
-void verify_message(test_msgs__msg__Strings & message, size_t msg_num)
-{
+template <>
+void verify_message(test_msgs__msg__Strings& message, size_t msg_num) {
   test_msgs__msg__Strings expected_msg;
   get_message(&expected_msg, msg_num);
   EXPECT_EQ(0, strcmp(expected_msg.string_value.data, message.string_value.data));
   EXPECT_EQ(0, strcmp(expected_msg.bounded_string_value.data, message.bounded_string_value.data));
 
-  auto msg_exit = make_scope_exit(
-    [&expected_msg]() {
-      fini_message(&expected_msg);
-    });
+  auto msg_exit = make_scope_exit([&expected_msg]() { fini_message(&expected_msg); });
 }
 
 TEST_F(CLASSNAME(TestMessagesFixture, RMW_IMPLEMENTATION), test_strings) {
-  const rosidl_message_type_support_t * ts = ROSIDL_GET_MSG_TYPE_SUPPORT(
-    test_msgs, msg, Strings);
+  const rosidl_message_type_support_t* ts = ROSIDL_GET_MSG_TYPE_SUPPORT(test_msgs, msg, Strings);
   test_message_type<test_msgs__msg__Strings>("test_strings", ts, this->context_ptr);
 }
 
-template<>
-size_t get_message_num(test_msgs__msg__Nested * msg)
-{
+template <>
+size_t get_message_num(test_msgs__msg__Nested* msg) {
   (void)msg;
   return 4;
 }
 
-template<>
-void init_message(test_msgs__msg__Nested * msg)
-{
+template <>
+void init_message(test_msgs__msg__Nested* msg) {
   test_msgs__msg__Nested__init(msg);
 }
 
-template<>
-void get_message(test_msgs__msg__Nested * msg, size_t msg_num)
-{
+template <>
+void get_message(test_msgs__msg__Nested* msg, size_t msg_num) {
   test_msgs__msg__Nested__init(msg);
   get_message(&msg->basic_types_value, msg_num);
 }
 
-template<>
-void verify_message(test_msgs__msg__Nested & message, size_t msg_num)
-{
+template <>
+void verify_message(test_msgs__msg__Nested& message, size_t msg_num) {
   verify_message(message.basic_types_value, msg_num);
 }
 
 DEFINE_FINI_MESSAGE(test_msgs__msg__Nested)
 TEST_F(CLASSNAME(TestMessagesFixture, RMW_IMPLEMENTATION), test_nested) {
-  const rosidl_message_type_support_t * ts = ROSIDL_GET_MSG_TYPE_SUPPORT(
-    test_msgs, msg, Nested);
+  const rosidl_message_type_support_t* ts = ROSIDL_GET_MSG_TYPE_SUPPORT(test_msgs, msg, Nested);
   test_message_type<test_msgs__msg__Nested>("test_nested", ts, this->context_ptr);
 }
 
-
-template<>
-size_t get_message_num(test_msgs__msg__Builtins * msg)
-{
+template <>
+size_t get_message_num(test_msgs__msg__Builtins* msg) {
   (void)msg;
   return 1;
 }
 
-template<>
-void init_message(test_msgs__msg__Builtins * msg)
-{
+template <>
+void init_message(test_msgs__msg__Builtins* msg) {
   test_msgs__msg__Builtins__init(msg);
 }
 
-template<>
-void get_message(test_msgs__msg__Builtins * msg, size_t msg_num)
-{
+template <>
+void get_message(test_msgs__msg__Builtins* msg, size_t msg_num) {
   test_msgs__msg__Builtins__init(msg);
   if (msg_num == 0) {
     msg->duration_value.sec = -1234567890;
@@ -621,9 +547,8 @@ void get_message(test_msgs__msg__Builtins * msg, size_t msg_num)
   }
 }
 
-template<>
-void verify_message(test_msgs__msg__Builtins & message, size_t msg_num)
-{
+template <>
+void verify_message(test_msgs__msg__Builtins& message, size_t msg_num) {
   test_msgs__msg__Builtins expected_msg;
   get_message(&expected_msg, msg_num);
   EXPECT_EQ(expected_msg.duration_value.sec, message.duration_value.sec);
@@ -634,28 +559,23 @@ void verify_message(test_msgs__msg__Builtins & message, size_t msg_num)
 
 DEFINE_FINI_MESSAGE(test_msgs__msg__Builtins)
 TEST_F(CLASSNAME(TestMessagesFixture, RMW_IMPLEMENTATION), test_builtins) {
-  const rosidl_message_type_support_t * ts = ROSIDL_GET_MSG_TYPE_SUPPORT(
-    test_msgs, msg, Builtins);
+  const rosidl_message_type_support_t* ts = ROSIDL_GET_MSG_TYPE_SUPPORT(test_msgs, msg, Builtins);
   test_message_type<test_msgs__msg__Builtins>("test_builtins", ts, this->context_ptr);
 }
 
-
-template<>
-size_t get_message_num(test_msgs__msg__Arrays * msg)
-{
+template <>
+size_t get_message_num(test_msgs__msg__Arrays* msg) {
   (void)msg;
   return 1;
 }
 
-template<>
-void init_message(test_msgs__msg__Arrays * msg)
-{
+template <>
+void init_message(test_msgs__msg__Arrays* msg) {
   test_msgs__msg__Arrays__init(msg);
 }
 
-template<>
-void get_message(test_msgs__msg__Arrays * msg, size_t msg_num)
-{
+template <>
+void get_message(test_msgs__msg__Arrays* msg, size_t msg_num) {
   test_msgs__msg__Arrays__init(msg);
   if (msg_num == 0) {
     msg->bool_values[0] = false;
@@ -713,9 +633,8 @@ void get_message(test_msgs__msg__Arrays * msg, size_t msg_num)
 }
 
 DEFINE_FINI_MESSAGE(test_msgs__msg__Arrays)
-template<>
-void verify_message(test_msgs__msg__Arrays & message, size_t msg_num)
-{
+template <>
+void verify_message(test_msgs__msg__Arrays& message, size_t msg_num) {
   test_msgs__msg__Arrays expected_msg;
   get_message(&expected_msg, msg_num);
   for (size_t i = 0; i < 3; ++i) {
@@ -735,35 +654,27 @@ void verify_message(test_msgs__msg__Arrays & message, size_t msg_num)
     EXPECT_EQ(0, strcmp(expected_msg.string_values[i].data, message.string_values[i].data));
   }
 
-  auto msg_exit = make_scope_exit(
-    [&expected_msg]() {
-      fini_message(&expected_msg);
-    });
+  auto msg_exit = make_scope_exit([&expected_msg]() { fini_message(&expected_msg); });
 }
 
 TEST_F(CLASSNAME(TestMessagesFixture, RMW_IMPLEMENTATION), test_arrays) {
-  const rosidl_message_type_support_t * ts = ROSIDL_GET_MSG_TYPE_SUPPORT(
-    test_msgs, msg, Arrays);
-  test_message_type<test_msgs__msg__Arrays>(
-    "test_arrays", ts, this->context_ptr);
+  const rosidl_message_type_support_t* ts = ROSIDL_GET_MSG_TYPE_SUPPORT(test_msgs, msg, Arrays);
+  test_message_type<test_msgs__msg__Arrays>("test_arrays", ts, this->context_ptr);
 }
 
-template<>
-size_t get_message_num(test_msgs__msg__UnboundedSequences * msg)
-{
+template <>
+size_t get_message_num(test_msgs__msg__UnboundedSequences* msg) {
   (void)msg;
   return 5;
 }
 
-template<>
-void init_message(test_msgs__msg__UnboundedSequences * msg)
-{
+template <>
+void init_message(test_msgs__msg__UnboundedSequences* msg) {
   test_msgs__msg__UnboundedSequences__init(msg);
 }
 
-template<>
-void get_message(test_msgs__msg__UnboundedSequences * msg, size_t msg_num)
-{
+template <>
+void get_message(test_msgs__msg__UnboundedSequences* msg, size_t msg_num) {
   test_msgs__msg__UnboundedSequences__init(msg);
   const size_t size = 2000;
   switch (msg_num) {
@@ -929,9 +840,8 @@ void get_message(test_msgs__msg__UnboundedSequences * msg, size_t msg_num)
 }
 
 DEFINE_FINI_MESSAGE(test_msgs__msg__UnboundedSequences)
-template<>
-void verify_message(test_msgs__msg__UnboundedSequences & message, size_t msg_num)
-{
+template <>
+void verify_message(test_msgs__msg__UnboundedSequences& message, size_t msg_num) {
   test_msgs__msg__UnboundedSequences expected_msg;
   get_message(&expected_msg, msg_num);
   for (size_t i = 0; i < expected_msg.bool_values.size; ++i) {
@@ -944,12 +854,10 @@ void verify_message(test_msgs__msg__UnboundedSequences & message, size_t msg_num
     EXPECT_EQ(expected_msg.char_values.data[i], message.char_values.data[i]);
   }
   for (size_t i = 0; i < expected_msg.float32_values.size; ++i) {
-    EXPECT_FLOAT_EQ(
-      expected_msg.float32_values.data[i], message.float32_values.data[i]);
+    EXPECT_FLOAT_EQ(expected_msg.float32_values.data[i], message.float32_values.data[i]);
   }
   for (size_t i = 0; i < expected_msg.float64_values.size; ++i) {
-    EXPECT_DOUBLE_EQ(
-      expected_msg.float64_values.data[i], message.float64_values.data[i]);
+    EXPECT_DOUBLE_EQ(expected_msg.float64_values.data[i], message.float64_values.data[i]);
   }
   for (size_t i = 0; i < expected_msg.int8_values.size; ++i) {
     EXPECT_EQ(expected_msg.int8_values.data[i], message.int8_values.data[i]);
@@ -961,60 +869,45 @@ void verify_message(test_msgs__msg__UnboundedSequences & message, size_t msg_num
     EXPECT_EQ(expected_msg.int16_values.data[i], message.int16_values.data[i]);
   }
   for (size_t i = 0; i < expected_msg.uint16_values.size; ++i) {
-    EXPECT_EQ(
-      expected_msg.uint16_values.data[i], message.uint16_values.data[i]);
+    EXPECT_EQ(expected_msg.uint16_values.data[i], message.uint16_values.data[i]);
   }
   for (size_t i = 0; i < expected_msg.int32_values.size; ++i) {
     EXPECT_EQ(expected_msg.int32_values.data[i], message.int32_values.data[i]);
   }
   for (size_t i = 0; i < expected_msg.uint32_values.size; ++i) {
-    EXPECT_EQ(
-      expected_msg.uint32_values.data[i], message.uint32_values.data[i]);
+    EXPECT_EQ(expected_msg.uint32_values.data[i], message.uint32_values.data[i]);
   }
   for (size_t i = 0; i < expected_msg.int64_values.size; ++i) {
     EXPECT_EQ(expected_msg.int64_values.data[i], message.int64_values.data[i]);
   }
   for (size_t i = 0; i < expected_msg.uint64_values.size; ++i) {
-    EXPECT_EQ(
-      expected_msg.uint64_values.data[i], message.uint64_values.data[i]);
+    EXPECT_EQ(expected_msg.uint64_values.data[i], message.uint64_values.data[i]);
   }
   for (size_t i = 0; i < expected_msg.string_values.size; ++i) {
-    EXPECT_EQ(
-      0,
-      strcmp(
-        message.string_values.data[i].data,
-        expected_msg.string_values.data[i].data));
+    EXPECT_EQ(0, strcmp(message.string_values.data[i].data, expected_msg.string_values.data[i].data));
   }
 
-  auto msg_exit = make_scope_exit(
-    [&expected_msg]() {
-      fini_message(&expected_msg);
-    });
+  auto msg_exit = make_scope_exit([&expected_msg]() { fini_message(&expected_msg); });
 }
 
 TEST_F(CLASSNAME(TestMessagesFixture, RMW_IMPLEMENTATION), test_unbounded_sequences) {
-  const rosidl_message_type_support_t * ts = ROSIDL_GET_MSG_TYPE_SUPPORT(
-    test_msgs, msg, UnboundedSequences);
-  test_message_type<test_msgs__msg__UnboundedSequences>(
-    "test_unbounded_sequences", ts, this->context_ptr);
+  const rosidl_message_type_support_t* ts = ROSIDL_GET_MSG_TYPE_SUPPORT(test_msgs, msg, UnboundedSequences);
+  test_message_type<test_msgs__msg__UnboundedSequences>("test_unbounded_sequences", ts, this->context_ptr);
 }
 
-template<>
-size_t get_message_num(test_msgs__msg__BoundedSequences * msg)
-{
+template <>
+size_t get_message_num(test_msgs__msg__BoundedSequences* msg) {
   (void)msg;
   return 2;
 }
 
-template<>
-void init_message(test_msgs__msg__BoundedSequences * msg)
-{
+template <>
+void init_message(test_msgs__msg__BoundedSequences* msg) {
   test_msgs__msg__BoundedSequences__init(msg);
 }
 
-template<>
-void get_message(test_msgs__msg__BoundedSequences * msg, size_t msg_num)
-{
+template <>
+void get_message(test_msgs__msg__BoundedSequences* msg, size_t msg_num) {
   test_msgs__msg__BoundedSequences__init(msg);
   switch (msg_num) {
     case 0:
@@ -1097,21 +990,19 @@ void get_message(test_msgs__msg__BoundedSequences * msg, size_t msg_num)
   }
 }
 
-#define EXPECT_SEQUENCE_EQ(pairwise_check, a, b) \
-  do { \
-    EXPECT_EQ(a.size, b.size) << "Sequences have different length"; \
-    for (size_t i = 0; i < std::min(a.size, b.size); ++i) { \
+#define EXPECT_SEQUENCE_EQ(pairwise_check, a, b)                                   \
+  do {                                                                             \
+    EXPECT_EQ(a.size, b.size) << "Sequences have different length";                \
+    for (size_t i = 0; i < std::min(a.size, b.size); ++i) {                        \
       pairwise_check(a.data[i], b.data[i]) << "Sequences differ at element " << i; \
-    } \
+    }                                                                              \
   } while (0)
 
-#define EXPECT_ROSIDLC_STREQ(a, b) \
-  EXPECT_EQ(std::string(a.data, a.size), std::string(b.data, b.size))
+#define EXPECT_ROSIDLC_STREQ(a, b) EXPECT_EQ(std::string(a.data, a.size), std::string(b.data, b.size))
 
 DEFINE_FINI_MESSAGE(test_msgs__msg__BoundedSequences)
-template<>
-void verify_message(test_msgs__msg__BoundedSequences & message, size_t msg_num)
-{
+template <>
+void verify_message(test_msgs__msg__BoundedSequences& message, size_t msg_num) {
   test_msgs__msg__BoundedSequences expected_msg;
   get_message(&expected_msg, msg_num);
 
@@ -1130,35 +1021,27 @@ void verify_message(test_msgs__msg__BoundedSequences & message, size_t msg_num)
   EXPECT_SEQUENCE_EQ(EXPECT_EQ, expected_msg.uint64_values, message.uint64_values);
   EXPECT_SEQUENCE_EQ(EXPECT_ROSIDLC_STREQ, expected_msg.string_values, message.string_values);
 
-  auto msg_exit = make_scope_exit(
-    [&expected_msg]() {
-      fini_message(&expected_msg);
-    });
+  auto msg_exit = make_scope_exit([&expected_msg]() { fini_message(&expected_msg); });
 }
 
 TEST_F(CLASSNAME(TestMessagesFixture, RMW_IMPLEMENTATION), test_bounded_sequences) {
-  const rosidl_message_type_support_t * ts = ROSIDL_GET_MSG_TYPE_SUPPORT(
-    test_msgs, msg, BoundedSequences);
-  test_message_type<test_msgs__msg__BoundedSequences>(
-    "test_bounded_sequences", ts, this->context_ptr);
+  const rosidl_message_type_support_t* ts = ROSIDL_GET_MSG_TYPE_SUPPORT(test_msgs, msg, BoundedSequences);
+  test_message_type<test_msgs__msg__BoundedSequences>("test_bounded_sequences", ts, this->context_ptr);
 }
 
-template<>
-size_t get_message_num(test_msgs__msg__MultiNested * msg)
-{
+template <>
+size_t get_message_num(test_msgs__msg__MultiNested* msg) {
   (void)msg;
   return 1;
 }
 
-template<>
-void init_message(test_msgs__msg__MultiNested * msg)
-{
+template <>
+void init_message(test_msgs__msg__MultiNested* msg) {
   test_msgs__msg__MultiNested__init(msg);
 }
 
-template<>
-void get_message(test_msgs__msg__MultiNested * msg, size_t msg_num)
-{
+template <>
+void get_message(test_msgs__msg__MultiNested* msg, size_t msg_num) {
   size_t i;
   test_msgs__msg__MultiNested__init(msg);
   test_msgs__msg__Arrays arrays;
@@ -1171,35 +1054,27 @@ void get_message(test_msgs__msg__MultiNested * msg, size_t msg_num)
     // Size of all arrays and sequences in the message
     const size_t size = 3u;
     test_msgs__msg__Arrays__Sequence__init(&msg->bounded_sequence_of_arrays, size);
-    test_msgs__msg__BoundedSequences__Sequence__init(
-      &msg->bounded_sequence_of_bounded_sequences, size);
-    test_msgs__msg__UnboundedSequences__Sequence__init(
-      &msg->bounded_sequence_of_unbounded_sequences, size);
+    test_msgs__msg__BoundedSequences__Sequence__init(&msg->bounded_sequence_of_bounded_sequences, size);
+    test_msgs__msg__UnboundedSequences__Sequence__init(&msg->bounded_sequence_of_unbounded_sequences, size);
     test_msgs__msg__Arrays__Sequence__init(&msg->unbounded_sequence_of_arrays, size);
-    test_msgs__msg__BoundedSequences__Sequence__init(
-      &msg->unbounded_sequence_of_bounded_sequences, size);
-    test_msgs__msg__UnboundedSequences__Sequence__init(
-      &msg->unbounded_sequence_of_unbounded_sequences, size);
+    test_msgs__msg__BoundedSequences__Sequence__init(&msg->unbounded_sequence_of_bounded_sequences, size);
+    test_msgs__msg__UnboundedSequences__Sequence__init(&msg->unbounded_sequence_of_unbounded_sequences, size);
     for (i = 0u; i < size; ++i) {
       get_message(&msg->array_of_arrays[i], i % num_arrays);
       get_message(&msg->array_of_bounded_sequences[i], i % num_bounded_sequences);
       get_message(&msg->array_of_unbounded_sequences[i], i % num_unbounded_sequences);
       get_message(&msg->bounded_sequence_of_arrays.data[i], i % num_arrays);
       get_message(&msg->bounded_sequence_of_bounded_sequences.data[i], i % num_bounded_sequences);
-      get_message(
-        &msg->bounded_sequence_of_unbounded_sequences.data[i], i % num_unbounded_sequences);
+      get_message(&msg->bounded_sequence_of_unbounded_sequences.data[i], i % num_unbounded_sequences);
       get_message(&msg->unbounded_sequence_of_arrays.data[i], i % num_arrays);
-      get_message(
-        &msg->unbounded_sequence_of_bounded_sequences.data[i], i % num_bounded_sequences);
-      get_message(
-        &msg->unbounded_sequence_of_unbounded_sequences.data[i], i % num_unbounded_sequences);
+      get_message(&msg->unbounded_sequence_of_bounded_sequences.data[i], i % num_bounded_sequences);
+      get_message(&msg->unbounded_sequence_of_unbounded_sequences.data[i], i % num_unbounded_sequences);
     }
   }
 }
 
-template<>
-void verify_message(test_msgs__msg__MultiNested & message, size_t msg_num)
-{
+template <>
+void verify_message(test_msgs__msg__MultiNested& message, size_t msg_num) {
   (void)msg_num;
   test_msgs__msg__Arrays arrays;
   test_msgs__msg__BoundedSequences bounded_sequences;
@@ -1213,22 +1088,16 @@ void verify_message(test_msgs__msg__MultiNested & message, size_t msg_num)
     verify_message(message.array_of_bounded_sequences[i], i % num_bounded_sequences);
     verify_message(message.array_of_unbounded_sequences[i], i % num_unbounded_sequences);
     verify_message(message.bounded_sequence_of_arrays.data[i], i % num_arrays);
-    verify_message(
-      message.bounded_sequence_of_bounded_sequences.data[i], i % num_bounded_sequences);
-    verify_message(
-      message.bounded_sequence_of_unbounded_sequences.data[i], i % num_unbounded_sequences);
+    verify_message(message.bounded_sequence_of_bounded_sequences.data[i], i % num_bounded_sequences);
+    verify_message(message.bounded_sequence_of_unbounded_sequences.data[i], i % num_unbounded_sequences);
     verify_message(message.unbounded_sequence_of_arrays.data[i], i % num_arrays);
-    verify_message(
-      message.unbounded_sequence_of_bounded_sequences.data[i], i % num_bounded_sequences);
-    verify_message(
-      message.unbounded_sequence_of_unbounded_sequences.data[i], i % num_unbounded_sequences);
+    verify_message(message.unbounded_sequence_of_bounded_sequences.data[i], i % num_bounded_sequences);
+    verify_message(message.unbounded_sequence_of_unbounded_sequences.data[i], i % num_unbounded_sequences);
   }
 }
 
 DEFINE_FINI_MESSAGE(test_msgs__msg__MultiNested)
 TEST_F(CLASSNAME(TestMessagesFixture, RMW_IMPLEMENTATION), test_multi_nested) {
-  const rosidl_message_type_support_t * ts = ROSIDL_GET_MSG_TYPE_SUPPORT(
-    test_msgs, msg, MultiNested);
-  test_message_type<test_msgs__msg__MultiNested>(
-    "test_multi_nested", ts, this->context_ptr);
+  const rosidl_message_type_support_t* ts = ROSIDL_GET_MSG_TYPE_SUPPORT(test_msgs, msg, MultiNested);
+  test_message_type<test_msgs__msg__MultiNested>("test_multi_nested", ts, this->context_ptr);
 }

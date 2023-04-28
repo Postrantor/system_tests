@@ -20,23 +20,15 @@
 
 #include "rclcpp/exceptions.hpp"
 #include "rclcpp/rclcpp.hpp"
-
 #include "test_msgs/service_fixtures.hpp"
 
 using namespace std::chrono_literals;
 
-template<typename T>
-int request(
-  rclcpp::Node::SharedPtr node,
-  const std::string & service_type,
-  std::vector<
-    std::pair<
-      typename T::Request::SharedPtr,
-      typename T::Response::SharedPtr
-    >
-  > services,
-  size_t number_of_cycles = 10)
-{
+template <typename T>
+int request(rclcpp::Node::SharedPtr node,
+            const std::string& service_type,
+            std::vector<std::pair<typename T::Request::SharedPtr, typename T::Response::SharedPtr> > services,
+            size_t number_of_cycles = 10) {
   int rc = 0;
   auto requester = node->create_client<T>(std::string("test/service/") + service_type);
   if (!requester->wait_for_service(20s)) {
@@ -59,19 +51,15 @@ int request(
     do {
       rclcpp::spin_some(node);
       status = f.wait_for(std::chrono::milliseconds(10));
-    } while (
-      status != std::future_status::ready && rclcpp::ok() &&
-      std::chrono::steady_clock::now() < wait_for_response_until
-    );
+    } while (status != std::future_status::ready && rclcpp::ok() &&
+             std::chrono::steady_clock::now() < wait_for_response_until);
 
     if (std::future_status::ready == status) {
       if (*f.get() == *services[service_index].second) {
         printf("received reply #%zu of %zu\n", service_index + 1, services.size());
         ++service_index;
       } else {
-        fprintf(
-          stderr, "received reply for request #%zu does not match the expected reply\n",
-          service_index + 1);
+        fprintf(stderr, "received reply for request #%zu does not match the expected reply\n", service_index + 1);
         rc = 2;
         break;
       }
@@ -99,8 +87,7 @@ int request(
   return rc;
 }
 
-int main(int argc, char ** argv)
-{
+int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
   if (argc != 3) {
     fprintf(stderr, "Wrong number of arguments, pass one service type\n");
@@ -109,20 +96,15 @@ int main(int argc, char ** argv)
 
   std::string service = argv[1];
   std::string namespace_ = argv[2];
-  auto node = rclcpp::Node::make_shared(
-    std::string("test_requester_") + service,
-    namespace_);
+  auto node = rclcpp::Node::make_shared(std::string("test_requester_") + service, namespace_);
 
   int rc;
   if (service == "Empty") {
-    rc = request<test_msgs::srv::Empty>(
-      node, service, get_services_empty());
+    rc = request<test_msgs::srv::Empty>(node, service, get_services_empty());
   } else if (service == "BasicTypes") {
-    rc = request<test_msgs::srv::BasicTypes>(
-      node, service, get_services_basic_types());
+    rc = request<test_msgs::srv::BasicTypes>(node, service, get_services_basic_types());
   } else if (service == "Arrays") {
-    rc = request<test_msgs::srv::Arrays>(
-      node, service, get_services_arrays());
+    rc = request<test_msgs::srv::Arrays>(node, service, get_services_arrays());
   } else {
     fprintf(stderr, "Unknown service argument '%s'\n", service.c_str());
     rclcpp::shutdown();
